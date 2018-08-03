@@ -25,7 +25,7 @@ for i in 1:latitude
         if rand() < density  #generate a customer;
             c[i, j] = 1;
             time[i, j] = rand() * time_length;
-            tips[i, j] = rand() * max_tip;
+            tips[i, j] = rand() * max_tip;#/asdf
         end
 
         if i != latitude #generate the cost of each legal route
