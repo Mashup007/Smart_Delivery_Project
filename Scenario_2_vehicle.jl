@@ -54,7 +54,7 @@ m = Model(solver = GurobiSolver(OutputFlag=0))
 
 solve(m)
 println(getvalue(z))
-# thoughts: constraint -> let z[i]*(their associate actual profit) == (the biggest profit)
+# thoughts: constraint -> let z[i]*(their associate actual profit) >= (the biggest profit)
 # so, we can get the max profit while ensuring Customers are covered
 
 #println(actual_profit[i]for i in Customers)
