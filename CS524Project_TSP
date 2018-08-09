@@ -4,11 +4,15 @@ using PyPlot, JuMP, NamedArrays, Gurobi
 sites = 1:10
 N = size(sites,1);
 
-# locations = rand(0:10,2,length(sites))
 seed = 1
 srand(seed)
 
 trip_cost = rand(1:10, N, N)
+
+for i = 1:N
+  trip_cost[i,i] = 0
+end
+
 
 random_order = randperm(N-1)+1
 random_tips = randperm(N-1)+1
