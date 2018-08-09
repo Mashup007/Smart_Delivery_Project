@@ -1,0 +1,89 @@
+using PyPlot, JuMP, NamedArrays, Gurobi
+
+
+sites = 1:10
+N = size(sites,1);
+
+# locations = rand(0:10,2,length(sites))
+seed = 1
+srand(seed)
+
+trip_cost = rand(1:10, N, N)
+
+random_order = randperm(N-1)+1
+random_tips = randperm(N-1)+1
+order = Dict()
+tips = Dict()
+
+order[sites[1]] = 1
+tips[sites[1]] = 0
+
+
+for i = 2:N
+    order[sites[i]] = random_order[i-1]
+    tips[sites[i]] = abs(random_tips[i-1])
+end
+
+lambda = 1
+
+m = Model(solver = GurobiSolver(OutputFlag=0))
+
+@variable(m, x[sites,sites] >= 0, Bin)                                      # must formulate as IP this time
+
+@constraint(m, c1[j in sites], sum( x[i,j] for i in sites ) == 1)      # one out-edge
+@constraint(m, c2[i in sites], sum( x[i,j] for j in sites ) == 1)      # one in-edge
+@constraint(m, c3[i in sites], x[i,i] == 0 )                            # no self-loops
+@constraint(m, c4[j in sites], sum( x[i,j] for i in sites ) == sum( x[j,k] for k in sites ))      # one out-edge
+
+# MTZ variables and constraints
+@variable(m, new_order[sites] >=1, Int)
+@constraint(m, c5[i in sites, j in sites[2:end]], new_order[i] - new_order[j] + N*x[i,j] <= N-1 )
+
+# trade off of tips loss
+@variable(m, order_diff[sites])
+@variable(m, L1_order[sites] >=0)
+@variable(m, total_trip_cost >=0)
+
+@constraint(m, c6[i in sites], order_diff[i] == new_order[i] - order[i])
+@constraint(m, c7[i in sites], L1_order[i] >= order_diff[i])
+@constraint(m, c8[i in sites], L1_order[i] >= - order_diff[i])
+@constraint(m, total_trip_cost == sum(x[i,j] * trip_cost[i,j] for i in sites, j in sites))
+
+@objective(m, Min, total_trip_cost + lambda * sum(L1_order))   # minimize total cost
+
+
+status = solve(m)
+
+# Print out sites in the order if delivery
+println()
+println("Print out sites in the order if delivery")
+next = 1
+print(next, " -> ")
+for i = 1:length(sites)-1
+    # println("i = ", i)
+    for j = 1:length(sites)
+        # println("j = ", j)
+        if getvalue(x[sites[next],sites[j]]) == 1
+            print(j, " -> ")
+            next = j
+            break
+        end
+    end
+end
+println("1")
+println("Desired delivery order for each sites")
+for(j,k) in sort(order)
+   println("$j → $k")
+end
+println("Optimal delivery order for each sites")
+for i in sites
+    print(i, " → ")
+    @printf "%.0f" getvalue(new_order[i])
+    println()
+end
+
+println()
+println("Tour Trip cost: ", round(getvalue(total_trip_cost),4))
+println("\lambda = ", lambda)
+println("Total Tip Loss: (Negative means extra tips gained) ", round(getvalue(total_tips_loss),4))
+println("Total cost: ", round(getobjectivevalue(m),4))
