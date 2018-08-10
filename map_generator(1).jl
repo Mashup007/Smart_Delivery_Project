@@ -2,10 +2,10 @@ seed = srand(124534)
 
 
 # Parameters
-latitude = 10
-longtitude = 10
-density = 0.1
-time_length = 1000
+latitude = 5
+longtitude = 5
+density = 0.2
+time_length = 250
 max_tip = 10
 # ------------
 

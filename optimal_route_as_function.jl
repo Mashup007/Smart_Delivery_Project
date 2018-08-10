@@ -20,7 +20,7 @@ function optimalRoute(graph, eweights1, resturant, customers, tips, deadline, op
         resturant_to_first = resturant_shortest_path.dists[routes[1]]
         accu_dist = resturant_to_first
         tip = 0
-        
+
         if option == "deadline_require"
             for i = 1 : length(routes)
                 if i < length(routes)
@@ -28,7 +28,7 @@ function optimalRoute(graph, eweights1, resturant, customers, tips, deadline, op
                     at = accu_dist*1; #assume speed is 1
                     if at > deadline[routes[i]]
                         tip = tip + 9999;
-                        
+
                         #compute the dist for the current to the next customer
                         cur_customer = routes[i]
                         next_customer = routes[i+1]
@@ -37,7 +37,7 @@ function optimalRoute(graph, eweights1, resturant, customers, tips, deadline, op
                         accu_dist = accu_dist + shortest_path.dists[next_customer]
                         cost_routes[k] = accu_dist + tip;
                     end
-                end 
+                end
             end
         elseif option == "deadline_not_require"
             for i = 1 : length(routes)
@@ -55,9 +55,9 @@ function optimalRoute(graph, eweights1, resturant, customers, tips, deadline, op
             end
         else
             println("invalid option. Should not happen")
-            return 
+            return
         end
-        
+
         #dist to deliver from last customer back to resturant
         last_to_resturant = resturant_shortest_path.dists[routes[end]]
         # collect tip from the last costumer
@@ -65,8 +65,8 @@ function optimalRoute(graph, eweights1, resturant, customers, tips, deadline, op
         accu_dist = accu_dist + last_to_resturant
         cost_routes[k] = accu_dist + tip
 
-    end        
-   
+    end
+
     #2. find the optimal route(s) with minimum cost
     optimal_routes = find( a->a == minimum(cost_routes), cost_routes)
     optimal_order = Array[];
@@ -97,12 +97,12 @@ function optimalRoute(graph, eweights1, resturant, customers, tips, deadline, op
         push!(optimal_routes_detail, optimal_routes_detail_cur)
     end
     return (optimal_order, optimal_routes_detail, cost_routes)
-    
+
 end
 
 
 # graph g1 has 5 vertices
-g1 = simple_inclist(5,is_directed=false) 
+g1 = simple_inclist(5,is_directed=false)
 
 # edge and weight of g1. (vertex1,vertex2,weight)
 g1_wedges = [
@@ -130,7 +130,7 @@ customers = [3,5,2]
 tips = Dict(zip(customers,[0,0,0]))
 deadline = Dict(zip(customers,[5,10,15]))
 option = "deadline_not_require"
-    
+
 (optimal_order, optimal_routes_detail, cost_routes) = optimalRoute(g1, eweights1, resturant, customers, tips, deadline, option)
 
 println("cost:")
@@ -148,12 +148,13 @@ for i = 1 : length(optimal_routes_detail)
     println("route ",i,": ",optimal_routes_detail[i])
 end
 
-zip
+#zip
 
-a[1]
+#a[1]
 
-customers = [3,5,2]
-tips = []
-deadline = Dict(zip(customers,[5,10,15]))
+#customers = [3,5,2]
+#tips = []
 
-deadline[5]
+#deadline = Dict(zip(customers,[5,10,15]))
+
+#deadline[5]
