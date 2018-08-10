@@ -1,80 +1,145 @@
 using JuMP, Gurobi, NamedArrays, Combinatorics
 
 m = Model(solver = GurobiSolver(OutputFlag=0))
-
-#Routine = [:1 :2 :3 :4 :5 :6 :7 :8 :9]
+Cost_Per_Mile = 2
+Vehicle_Max_Capacity = 15 # max capacity of each Truck
 
 Routines = Array[]
-Routines_1 =
-println(Routines)
+Routines_tp = Array[]
+Actual_Routines = Array[]
+Cost_Array = Int64[]
+Coverage_Array = Array[]
+Cover_Counter_Array = Int64[]
 
-# We have k vehicles
-Vehicle_Max_Capacity = 30 # max capacity of each Truck
-#---------------------------------------------------------------
-# COST/PROFIT Informtaion
-Cost_Per_Mile = 2 # cost of gas per mile for Vehicles
+Customers = [0,1,2,3,4,5]
+Customers_Request = Dict(zip(Customers, [0 2 4 6 8 10]))
+f = 0 # Counter --- useless
+x = 0 # Counter --- useless
 
-#Profit/unit = 20 for everything. SO --> Min Cost == Max Profit
-Customers = [1,2,3,4,5,6] # 1 is resturant. Total Customers == 5.
-Customers_Request = Dict(zip(Customers, [0 11 9 8 12 14]))
-Pure_Profit = Dict(zip(Customers,[0 220 180 160 240 280]))
-###########
-Routines = Dict()
+Distances_D_M = NamedArray([0 8 4 6 2 9
+                            8 0 8 3 6 8
+                            4 8 0 2 2 2
+                            6 3 2 0 2 1
+                            2 6 2 2 0 2
+                            9 8 2 1 2 0],(Customers,Customers),("Customers","Customers"))
 
-for i in Customers
-    for j in Routine
-Routines[] = Customers_Request[i] for i in Customers <= Vehicle_Max_Capacity
+######### Gather All of the Routines and put them into an Array ###############
+ppl = length(Customers)-1 # the first element is restaurant
+for i in 2:length(Customers)
+    Routines_tp = collect(permutations(Customers[2:end],ppl))
+    push!(Routines,Routines_tp)
+    ppl = ppl - 1
 end
-#################################
-Distances_D_M = NamedArray([0 18 14 16 12 19
-                            18 0 18 30 26 28
-                            14 18 0 20 22 21
-                            16 30 20 0 22 21
-                            12 26 22 22 0 22
-                            19 28 21 21 22 0],(Customers,Customers),("Customers","Customers"))
-println("[1,1] is restaurant")
-println(Distances_D_M)
-println("***Rows and Columns represent the distance between Customers [reminder: 1,1 is restaurant]")
 
-@variable(m, actual_profit[Customers])
-@variable(m, cost[Customers]>=0)
-# Total cost: (Cost_Per_Mile*Distances_D_M[i,:] for i in Customers)
-# Pure profit: (Pure_Profit[i])
-# Acutal profit = Pure profit - Total cost
-#-------------------------------------------------------
-#SOLVE ROUTINE PROBLEM
-@variable(m, z[Customers], Bin) # 1 if the customer is been visited, otherwise 0
-@variable(m, y[Routine]>=0)
-@variable(m, x[])
+########## Get the Actual Routines that are possible to implement #############
 
-# Set up routine: (Some routines are not available due to the Vehicle_Max_Capacity)
-# x[1] = 1-2-3-4
-# x[2] = 1-2-4
-# x[3] = 1-2-5
-# x[4] = 1-2-6
-# x[5] = 1-3-4-5
-# x[6] = 1-3-4
-# x[7] = 1-4-5
-# x[8] = 1-4-6
-# x[9] = 1-5-6
-#################################
-
-################################
-for y in Routine
-    @constraint(m, x[Routine], )
+for i in 1:length(Routines) # largest Array
+    for k in 1:length(Routines[i]) # Array for 5 perms, 4 perms...
+        sum = 0
+        f += 1 # permutation counter --- useless
+        exceed_capacity = 0
+            for a in 1:length(Routines[i][k]) # lowest Array
+                sum += Customers_Request[Routines[i][k][a]]
+                if sum > Vehicle_Max_Capacity
+                    sum -= Customers_Request[Routines[i][k][a]]
+                    exceed_capacity = 1 #indicate that this set exceeded max capacity
+                    break
+                end
+            end
+        if exceed_capacity != 1
+            push!(Actual_Routines,Routines[i][k]) # Add the valid routine to Actual_Routines
+            x += 1 # Counter ---- useless
+        end
+    end
 end
-@constraint(m, sum(x[Routine])>=1 )
+println("Total elements should be in Actual_Routines: ", x )
+println("Actual_Routines_length: ",length(Actual_Routines))
+println("Actual_Routines: ",Actual_Routines)
+
+for i in 1:length(Actual_Routines)
+    cost = 0
+    switch = 0 # indicate whether is the first element of an array
+    for j in 1:length(Actual_Routines[i])
+        if j < length(Actual_Routines[i]) && length(Actual_Routines[i])>1
+            if switch == 0
+                cost += Cost_Per_Mile*Distances_D_M[0,Actual_Routines[i][j]]
+                switch = 1
+            end
+            if switch == 1
+                cost += Cost_Per_Mile*Distances_D_M[Actual_Routines[i][j],Actual_Routines[i][j+1]]
+            end
+        elseif length(Actual_Routines[i]) == 1
+            cost += Cost_Per_Mile*Distances_D_M[0,Actual_Routines[i][j]]
+        end
+    end
+    push!(Cost_Array,cost) # push the cost of this routine
+end
+println(Cost_Array)
+println("Cost_Arry length: ", length(Cost_Array))
 
 
-# @constraint(m, y[1]+y[2]+y[3]+y[4] >= 1) # 2 is covered
-# @constraint(m, y[1]+y[5]+y[6] >= 1) # 3 is covered
-# @constraint(m, y[2]+y[5]+z[6]+z[7]+z[8] >= 1) # 4 is covered
-# @constraint(m, z[3]+z[5]+z[7]+z[9] >= 1) # 5 is covered
-# @constraint(m, z[4]+z[8]+z[9] >= 1) # 6 is covered
 
-@objective(m, Min, sum(z[j] for j in Routine))
+Solve_Array = Int64[]
+for i in 1:length(Actual_Routines)
+    push!(Solve_Array, i)
+end
+println("Solve Array:", Solve_Array)
+
+####################### Solving The Problem ###################################
+@variable(m, z[Solve_Array], Bin)
+
+support_array = Int64[] # wipe out everything unecessary
+for i in 1:length(Actual_Routines)
+    for j in 1:length(Actual_Routines[i])
+        if Actual_Routines[i][j] == 1
+            push!(support_array, Solve_Array[i])
+        end
+    end
+end
+@constraint(m, sum(z[k] for k in support_array) >= 1)
+
+support_array = Int64[] # wipe out everything unecessary
+for i in 1:length(Actual_Routines)
+    for j in 1:length(Actual_Routines[i])
+        if Actual_Routines[i][j] == 2
+            push!(support_array, Solve_Array[i])
+        end
+    end
+end
+@constraint(m, sum(z[k] for k in support_array) >= 1)
+
+support_array = Int64[] # wipe out everything unecessary
+for i in 1:length(Actual_Routines)
+    for j in 1:length(Actual_Routines[i])
+        if Actual_Routines[i][j] == 3
+            push!(support_array, Solve_Array[i])
+        end
+    end
+end
+@constraint(m, sum(z[k] for k in support_array) >= 1)
+
+support_array = Int64[] # wipe out everything unecessary
+for i in 1:length(Actual_Routines)
+    for j in 1:length(Actual_Routines[i])
+        if Actual_Routines[i][j] == 4
+            push!(support_array, Solve_Array[i])
+        end
+    end
+end
+@constraint(m, sum(z[k] for k in support_array) >= 1)
+
+support_array = Int64[] # wipe out everything unecessary
+for i in 1:length(Actual_Routines)
+    for j in 1:length(Actual_Routines[i])
+        if Actual_Routines[i][j] == 5
+            push!(support_array, Solve_Array[i])
+        end
+    end
+end
+@constraint(m, sum(z[k] for k in support_array) >= 1)
+
+@objective(m, Min, sum(z[k] for k in Solve_Array))
 
 solve(m)
+println(getobjectivevalue(m))
 println(getvalue(z))
-# thoughts: constraint -> let z[i]*(their associate actual profit) >= (the biggest profit)
-# so, we can get the max profit while ensuring Customers are covered
